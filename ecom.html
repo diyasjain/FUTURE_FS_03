@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mini Amazon Clone — Demo</title>
+  <style>
+    :root{--primary:#0073e6;--muted:#6b7280;--card:#fff;--bg:#f3f4f6}
+    *{box-sizing:border-box}
+    body{font-family:Inter,system-ui,Arial,sans-serif;margin:0;background:var(--bg);color:#111}
+    header{background:white;box-shadow:0 1px 4px rgba(2,6,23,0.08);position:sticky;top:0;z-index:20}
+    .container{max-width:1200px;margin:0 auto;padding:0 16px}
+    .nav{display:flex;align-items:center;gap:16px;height:64px}
+    .logo{font-weight:700;color:var(--primary);font-size:20px}
+    .search{flex:1;display:flex}
+    .search input{flex:1;padding:10px 12px;border-radius:6px 0 0 6px;border:1px solid #e6e8eb;outline:none}
+    .search button{padding:10px 14px;border:1px solid #e6e8eb;background:var(--primary);color:white;border-radius:0 6px 6px 0;cursor:pointer}
+    .nav-actions{display:flex;align-items:center;gap:12px}
+    .cart-btn{position:relative;background:transparent;border:none;cursor:pointer;font-weight:600}
+    .cart-count{position:absolute;top:-6px;right:-6px;background:#ff3b30;color:white;border-radius:50%;padding:3px 6px;font-size:12px}
+
+    main{padding:24px 0}
+    .hero{display:flex;gap:20px;align-items:center;padding:18px;background:linear-gradient(90deg,#fff 0%,#f8fafc 100%);border-radius:10px}
+    .hero img{width:220px;border-radius:8px}
+    .hero .info h1{margin:0 0 8px 0}
+
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:18px;margin-top:18px}
+    .card{background:var(--card);padding:12px;border-radius:10px;box-shadow:0 2px 6px rgba(2,6,23,0.06);display:flex;flex-direction:column}
+    .card img{width:100%;height:150px;object-fit:cover;border-radius:8px;cursor:pointer}
+    .card h3{font-size:15px;margin:10px 0 6px}
+    .price-row{display:flex;align-items:center;justify-content:space-between;margin-top:auto}
+    .price{font-weight:700}
+    .add{background:var(--primary);color:white;border:none;padding:8px 10px;border-radius:8px;cursor:pointer}
+
+    /* Cart drawer */
+    .drawer{position:fixed;right:0;top:0;height:100%;width:380px;max-width:95%;background:white;box-shadow:-6px 0 40px rgba(2,6,23,0.12);transform:translateX(110%);transition:transform .28s ease;z-index:40;padding:18px;display:flex;flex-direction:column}
+    .drawer.open{transform:translateX(0)}
+    .drawer h2{margin:0 0 12px}
+    .cart-list{flex:1;overflow:auto;padding-right:6px}
+    .cart-item{display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid #f1f1f3}
+    .cart-item img{width:64px;height:64px;object-fit:cover;border-radius:6px}
+    .qty{display:flex;align-items:center;gap:6px}
+    .qty button{width:28px;height:28px;border-radius:6px;border:1px solid #e6e8eb;background:white;cursor:pointer}
+    .checkout{margin-top:12px;padding:12px;border-radius:8px;background:var(--primary);color:white;border:none;cursor:pointer}
+
+    .empty{color:var(--muted);text-align:center;padding:40px 10px}
+
+    /* product modal */
+    .modal{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(.95);background:white;border-radius:10px;padding:18px;box-shadow:0 10px 40px rgba(2,6,23,0.2);z-index:50;max-width:900px;width:95%;display:none}
+    .modal.open{display:block}
+    .modal .content{display:flex;gap:16px}
+    .modal img{width:320px;height:320px;object-fit:cover;border-radius:8px}
+    .close{position:absolute;right:10px;top:10px;border:none;background:transparent;font-size:18px;cursor:pointer}
+
+    footer{padding:24px 0;text-align:center;color:var(--muted)}
+
+    @media (max-width:700px){.hero{flex-direction:column;align-items:flex-start}.modal .content{flex-direction:column}.modal img{width:100%;height:200px}}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container nav">
+      <div class="logo">Mini<span style="color:#111">Shop</span></div>
+      <div class="search">
+        <input id="q" placeholder="Search products, brands and more" />
+        <button id="searchBtn">Search</button>
+      </div>
+      <div class="nav-actions">
+        <button class="cart-btn" id="openCart">Cart 🛒 <span id="cartCount" class="cart-count">0</span></button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="hero">
+      <img src="https://www.creativefabrica.com/wp-content/uploads/2020/05/14/Ecommerce-icon-Graphics-4123404-1.jpg" alt="shopping" />
+      <div class="info">
+        <h1>Welcome to MiniShop</h1>
+        <p style="color:var(--muted);margin:6px 0 0">Browse featured products, click an image for details, add to cart and try the simple checkout flow.</p>
+      </div>
+    </section>
+
+    <section>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:18px">
+        <h2 style="margin:0">Products</h2>
+        <div style="color:var(--muted);font-size:14px">Showing <span id="productCount">0</span> items</div>
+      </div>
+      <div id="grid" class="grid" aria-live="polite"></div>
+    </section>
+  </main>
+
+  <!-- Cart drawer -->
+  <aside id="drawer" class="drawer" aria-hidden="true">
+    <button id="closeCart" class="close">✕</button>
+    <h2>Your Cart</h2>
+    <div id="cartList" class="cart-list"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px">
+      <div style="font-weight:700">Total: ₹<span id="cartTotal">0.00</span></div>
+      <button id="checkout" class="checkout">Checkout</button>
+    </div>
+  </aside>
+
+  <!-- Product modal -->
+  <div id="modal" class="modal" role="dialog" aria-modal="true">
+    <button id="closeModal" class="close">✕</button>
+    <div class="content">
+      <img id="modalImg" src="" alt="product" />
+      <div>
+        <h3 id="modalTitle"></h3>
+        <p id="modalDesc" style="color:var(--muted)"></p>
+        <div style="margin-top:12px;font-weight:700;font-size:18px">₹<span id="modalPrice"></span></div>
+        <div style="margin-top:12px">
+          <button id="modalAdd" class="add">Add to cart</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+
+  </footer>
+
+  <script>
+    // Sample product data (image links included)
+    const products = [
+      {id:1,title:'Wireless Headphones',price:2499,desc:'Comfort-fit over ear wireless headphones with long battery life.',img:'https://m.media-amazon.com/images/I/61r3c1RY6TL._AC_SS450_.jpg'},
+      {id:2,title:'Smartphone 6.5"',price:15999,desc:'6.5 inch display, 128GB storage, dual camera.',img:'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?q=80&w=1000&auto=format&fit=crop&ixlib=rb-4.0.3&s=6b4e8b7b3f8c5b2c1e9a5f2b1a2c3d4e'},
+      {id:3,title:'Sneakers',price:3499,desc:'Lightweight running sneakers with breathable mesh.',img:'https://tse1.mm.bing.net/th/id/OIP.CHzEWlyd0mTiKs1gcKmdpQHaJQ?rs=1&pid=ImgDetMain&o=7&rm=3'},
+      {id:4,title:'Coffee Maker',price:4999,desc:'Compact drip coffee maker with auto shutoff.',img:'https://pisces.bbystatic.com/image2/BestBuy_US/images/products/6534/6534183_rd.jpg'},
+      {id:5,title:'Backpack',price:1299,desc:'Durable backpack with laptop sleeve.',img:'https://m.media-amazon.com/images/I/710axAkAvML._AC_SL1500_.jpg'},
+      {id:6,title:'Wrist Watch',price:3499,desc:'Water-resistant analog watch.',img:'https://images-na.ssl-images-amazon.com/images/I/71hnzl6uqfL._UL1500_.jpg'},
+      {id:7,title:'Bluetooth Speaker',price:1999,desc:'Portable speaker with rich bass.',img:'https://i5.walmartimages.com/asr/265110c2-05e6-4cc9-8c70-01f1a218521c.64e20e75fc362c08687fe3716af985cf.jpeg'},
+      {id:8,title:'Sunglasses',price:999,desc:'UV protective stylish sunglasses.',img:'https://tse2.mm.bing.net/th/id/OIP.hCINGL4k1SvG4aPNmnXSkQHaLH?rs=1&pid=ImgDetMain&o=7&rm=3'}
+    ];
+
+    // --- Utilities ---
+    const $ = sel => document.querySelector(sel);
+    const $$ = sel => Array.from(document.querySelectorAll(sel));
+
+    // Cart stored as {productId: qty}
+    let cart = JSON.parse(localStorage.getItem('mini_cart') || '{}');
+
+    // render products
+    const grid = $('#grid');
+    const productCount = $('#productCount');
+    function renderProducts(list){
+      grid.innerHTML = '';
+      list.forEach(p => {
+        const card = document.createElement('div');card.className='card';
+        card.innerHTML = `
+          <img src="${p.img}" alt="${p.title}" data-id="${p.id}" />
+          <h3>${p.title}</h3>
+          <div style="color:var(--muted);font-size:13px">${p.desc}</div>
+          <div class="price-row">
+            <div class="price">₹${p.price.toLocaleString()}</div>
+            <button class="add" data-id="${p.id}">Add</button>
+          </div>`;
+        grid.appendChild(card);
+      });
+      productCount.textContent = list.length;
+    }
+
+    // open product modal
+    function openModal(productId){
+      const p = products.find(x=>x.id==productId);
+      if(!p) return;
+      $('#modalImg').src = p.img;
+      $('#modalTitle').textContent = p.title;
+      $('#modalDesc').textContent = p.desc;
+      $('#modalPrice').textContent = p.price.toLocaleString();
+      $('#modalAdd').dataset.id = p.id;
+      $('#modal').classList.add('open');
+    }
+
+    // cart functions
+    function saveCart(){localStorage.setItem('mini_cart', JSON.stringify(cart));renderCart();}
+    function addToCart(id, qty=1){cart[id] = (cart[id]||0)+qty; saveCart();}
+    function removeFromCart(id){delete cart[id]; saveCart();}
+    function changeQty(id, qty){if(qty<=0) removeFromCart(id); else {cart[id]=qty; saveCart();}}
+
+    function renderCart(){
+      const list = $('#cartList'); list.innerHTML='';
+      const ids = Object.keys(cart).map(x=>parseInt(x));
+      if(ids.length===0){list.innerHTML='<div class="empty">Your cart is empty</div>';$('#cartTotal').textContent='0.00';$('#cartCount').textContent='0';return}
+      let total=0;ids.forEach(id=>{
+        const p = products.find(x=>x.id===id);
+        const qty = cart[id];
+        total += p.price*qty;
+        const el = document.createElement('div');el.className='cart-item';
+        el.innerHTML=`
+          <img src="${p.img}" alt="${p.title}" />
+          <div style="flex:1">
+            <div style="font-weight:700">${p.title}</div>
+            <div style="color:var(--muted);font-size:13px">₹${p.price.toLocaleString()} x ${qty} = ₹${(p.price*qty).toLocaleString()}</div>
+            <div class="qty" style="margin-top:8px">
+              <button data-action="dec" data-id="${id}">-</button>
+              <div style="padding:6px 10px;border:1px solid #f0f0f0;border-radius:6px">${qty}</div>
+              <button data-action="inc" data-id="${id}">+</button>
+              <button data-action="rm" data-id="${id}" style="margin-left:8px;background:transparent;border:none;color:#ff3b30;cursor:pointer">Remove</button>
+            </div>
+          </div>`;
+        list.appendChild(el);
+      });
+      $('#cartTotal').textContent = total.toLocaleString();
+      $('#cartCount').textContent = ids.reduce((s,i)=>s+cart[i],0);
+    }
+
+    // event listeners
+    document.addEventListener('click', e=>{
+      // add buttons in grid
+      if(e.target.matches('.add')){ const id = parseInt(e.target.dataset.id); addToCart(id); }
+      if(e.target.matches('.card img')){ const id = parseInt(e.target.dataset.id); openModal(id); }
+      // open/close cart
+      if(e.target.id==='openCart'){ $('#drawer').classList.add('open'); $('#drawer').setAttribute('aria-hidden','false'); }
+      if(e.target.id==='closeCart'){ $('#drawer').classList.remove('open'); $('#drawer').setAttribute('aria-hidden','true'); }
+      // cart qty buttons
+      if(e.target.dataset && e.target.dataset.action){ const id = parseInt(e.target.dataset.id); const action = e.target.dataset.action;
+        if(action==='inc') changeQty(id, cart[id]+1);
+        if(action==='dec') changeQty(id, cart[id]-1);
+        if(action==='rm') removeFromCart(id);
+      }
+      // modal add
+      if(e.target.id==='modalAdd'){ const id = parseInt(e.target.dataset.id); addToCart(id); $('#modal').classList.remove('open'); }
+      if(e.target.id==='closeModal'){ $('#modal').classList.remove('open'); }
+      // checkout (demo)
+      if(e.target.id==='checkout'){ alert('Checkout demo — total: ₹' + $('#cartTotal').textContent); cart = {}; saveCart(); $('#drawer').classList.remove('open'); }
+    });
+
+    // search
+    $('#searchBtn').addEventListener('click', ()=>{
+      const q = $('#q').value.trim().toLowerCase();
+      if(!q) renderProducts(products);
+      else renderProducts(products.filter(p=>p.title.toLowerCase().includes(q) || p.desc.toLowerCase().includes(q)));
+    });
+
+    // init
+    renderProducts(products);
+    renderCart();
+
+    // expose for debugging (optional)
+    window._mini = {products,cart,addToCart,renderCart};
+  </script>
+</body>
+</html>
